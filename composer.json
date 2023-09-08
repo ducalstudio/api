@@ -1,0 +1,46 @@
+{
+    "name": "ducal/api",
+    "description": "API package for Ducal CMS",
+    "type": "package",
+    "license": "MIT",
+    "keywords": [
+        "ducal",
+        "ducal cms",
+        "ducal platform",
+        "ducal api"
+    ],
+    "homepage": "https://ducalstudio.com",
+    "authors": [
+        {
+            "name": "Ducal Studio",
+            "email": "contact@ducalstudio.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Ducal\\Api\\": "src"
+        }
+    },
+    "require": {
+
+    },
+    "require-dev": {
+        "knuckleswtf/scribe": "^4.22",
+        "laravel/pint": "^1.4.0",
+        "phpunit/phpunit": "^9.0|^10.0"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Ducal\\Api\\Providers\\ApiServiceProvider"
+            ],
+            "aliases": {
+                "ApiHelper": "Ducal\\Api\\Facades\\ApiHelper"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable"
+}
