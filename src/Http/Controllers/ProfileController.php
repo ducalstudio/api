@@ -5,13 +5,16 @@ namespace Ducal\Api\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Ducal\Api\Facades\ApiHelper;
 use Ducal\Api\Http\Resources\UserResource;
+use Ducal\Base\Facades\BaseHelper;
 use Ducal\Base\Http\Responses\BaseHttpResponse;
 use Ducal\Media\Facades\RvMedia;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
@@ -73,11 +76,10 @@ class ProfileController extends Controller
     /**
      * Update profile
      *
-     * @bodyParam first_name string required First name.
-     * @bodyParam last_name string required Last name.
+     * @bodyParam name string required Name.
      * @bodyParam email string Email.
-     * @bodyParam dob string required Date of birth.
-     * @bodyParam gender string Gender
+     * @bodyParam dob date nullable Date of birth (format: Y-m-d).
+     * @bodyParam gender string Gender (male, female, other).
      * @bodyParam description string Description
      * @bodyParam phone string required Phone.
      *
@@ -86,16 +88,24 @@ class ProfileController extends Controller
      */
     public function updateProfile(Request $request, BaseHttpResponse $response)
     {
-        $userId = $request->user()->getKey();
+        $user = $request->user();
+        $userId = $user->getKey();
 
         $validator = Validator::make($request->input(), [
-            'first_name' => 'required|max:120|min:2',
-            'last_name' => 'required|max:120|min:2',
-            'phone' => 'required|max:15|min:8',
-            'dob' => 'required|max:15|min:8',
-            'gender' => 'nullable',
-            'description' => 'nullable',
-            'email' => 'nullable|max:60|min:6|email|unique:' . ApiHelper::getTable() . ',email,' . $userId,
+            'first_name' => ['nullable', 'required_without:name', 'string', 'max:120', 'min:2'],
+            'last_name' => ['nullable', 'required_without:name', 'string', 'max:120', 'min:2'],
+            'name' => ['nullable', 'required_without:first_name', 'string', 'max:120', 'min:2'],
+            'phone' => ['nullable', 'string', ...BaseHelper::getPhoneValidationRule(true)],
+            'dob' => ['nullable', 'string', 'sometimes', 'date_format:' . BaseHelper::getDateFormat(), 'max:20'],
+            'gender' => ['nullable', 'string', Rule::in(['male', 'female', 'other'])],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'email' => [
+                'nullable',
+                'email',
+                'max:60',
+                'min:6',
+                'unique:' . ApiHelper::getTable() . ',email,' . $userId,
+            ],
         ]);
 
         if ($validator->fails()) {
@@ -106,7 +116,12 @@ class ProfileController extends Controller
         }
 
         try {
-            $request->user()->update($request->input());
+            $data = $validator->validated();
+            $user->fill($data);
+            if (! empty($data['dob'])) {
+                $user->dob = Carbon::parse($data['dob']);
+            }
+            $user->save();
 
             return $response
                 ->setData($request->user()->toArray())
@@ -122,6 +137,7 @@ class ProfileController extends Controller
      * Update password
      *
      * @bodyParam password string required The new password of user.
+     * @bodyParam old_password string required The current password of user.
      *
      * @group Profile
      * @authenticated
@@ -129,7 +145,8 @@ class ProfileController extends Controller
     public function updatePassword(Request $request, BaseHttpResponse $response)
     {
         $validator = Validator::make($request->input(), [
-            'password' => 'required|min:6|max:60',
+            'password' => ['required', 'string', 'min:6', 'max:60'],
+            'old_password' => ['required', 'string', 'min:6', 'max:60'],
         ]);
 
         if ($validator->fails()) {
@@ -139,10 +156,17 @@ class ProfileController extends Controller
                 ->setMessage(__('Data invalid!') . ' ' . implode(' ', $validator->errors()->all()) . '.');
         }
 
+        if (! Hash::check($request->input('old_password'), $request->user()->getAuthPassword())) {
+            return $response
+                ->setError()
+                ->setCode(403)
+                ->setMessage(__('Current password is not valid!'));
+        }
+
         $request->user()->update([
             'password' => Hash::make($request->input('password')),
         ]);
 
-        return $response->setMessage(trans('core/acl::users.password_update_success'));
+        return $response->setMessage(__('Update password successfully!'));
     }
 }

@@ -3,9 +3,9 @@
 namespace Ducal\Api\Providers;
 
 use Ducal\Api\Facades\ApiHelper;
+use Ducal\Api\Commands\GenerateDocumentationCommand;
 use Ducal\Api\Http\Middleware\ForceJsonResponseMiddleware;
 use Ducal\Api\Models\PersonalAccessToken;
-use Ducal\Base\Facades\DashboardMenu;
 use Ducal\Base\Facades\PanelSectionManager;
 use Ducal\Base\PanelSections\PanelSectionItem;
 use Ducal\Base\Supports\ServiceProvider;
@@ -54,17 +54,6 @@ class ApiServiceProvider extends ServiceProvider
 
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
-        DashboardMenu::default()->beforeRetrieving(function () {
-            DashboardMenu::make()
-                ->registerItem([
-                    'id' => 'cms-packages-api-sanctum-token',
-                    'name' => trans('packages/api::sanctum-token.name'),
-                    'icon' => 'ti ti-key',
-                    'url' => route('api.sanctum-token.index'),
-                    'permissions' => ['api.sanctum-token.index'],
-                ]);
-        });
-
         $this->app['events']->listen(RouteMatched::class, function () {
             if (ApiHelper::enabled()) {
                 $this->app['router']->pushMiddlewareToGroup('api', ForceJsonResponseMiddleware::class);
@@ -82,6 +71,28 @@ class ApiServiceProvider extends ServiceProvider
                         ->withPriority(110)
                         ->withRoute('api.settings')
                 );
+        });
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                GenerateDocumentationCommand::class,
+            ]);
+        }
+
+        $this->app->booted(function () {
+            add_filter('core_acl_role_permissions', function (array $permissions) {
+                $apiPermissions = $this->app['config']->get('packages.api.permissions', []);
+
+                if (! $apiPermissions) {
+                    return $permissions;
+                }
+
+                foreach ($apiPermissions as $permission) {
+                    $permissions[$permission['flag']] = $permission;
+                }
+
+                return $permissions;
+            }, 120);
         });
     }
 
