@@ -4,43 +4,26 @@ namespace Ducal\Api\Http\Controllers;
 
 use Ducal\Api\Http\Requests\ApiSettingRequest;
 use Ducal\Base\Facades\Assets;
-use Ducal\Base\Facades\PageTitle;
-use Ducal\Base\Http\Responses\BaseHttpResponse;
-use Illuminate\Routing\Controller;
+use Ducal\Setting\Http\Controllers\SettingController;
 
-class ApiController extends Controller
+class ApiController extends SettingController
 {
-    public function settings()
+    public function edit()
     {
-        PageTitle::setTitle(trans('packages/api::api.settings'));
+        $this->pageTitle(trans('packages/api::api.settings'));
 
-        Assets::addScriptsDirectly('vendor/core/core/setting/js/setting.js');
-        Assets::addStylesDirectly('vendor/core/core/setting/css/setting.css');
+        Assets::addScriptsDirectly('vendor/core/core/setting/js/setting.js')
+            ->addStylesDirectly('vendor/core/core/setting/css/setting.css');
+
+        $this->breadcrumb()
+            ->add(trans('core/setting::setting.title'), route('settings.index'))
+            ->add(trans('packages/api::api.settings'));
 
         return view('packages/api::settings');
     }
 
-    public function storeSettings(ApiSettingRequest $request, BaseHttpResponse $response)
+    public function update(ApiSettingRequest $request)
     {
-        $this->saveSettings($request->except([
-            '_token',
-        ]));
-
-        return $response
-            ->setPreviousUrl(route('api.settings'))
-            ->setMessage(trans('core/base::notices.update_success_message'));
-    }
-
-    protected function saveSettings(array $data)
-    {
-        foreach ($data as $settingKey => $settingValue) {
-            if (is_array($settingValue)) {
-                $settingValue = json_encode(array_filter($settingValue));
-            }
-
-            setting()->set($settingKey, (string)$settingValue);
-        }
-
-        setting()->save();
+        return $this->performUpdate($request->validated());
     }
 }

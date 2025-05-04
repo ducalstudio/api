@@ -1,21 +1,21 @@
 <?php
 
-use Ducal\Base\Facades\BaseHelper;
+use Ducal\Api\Http\Controllers\ApiController;
+use Ducal\Api\Http\Controllers\SanctumTokenController;
+use Ducal\Base\Facades\AdminHelper;
 use Illuminate\Support\Facades\Route;
 
-Route::group(['namespace' => 'Ducal\Api\Http\Controllers', 'middleware' => ['web', 'core']], function () {
-    Route::group(['prefix' => BaseHelper::getAdminPrefix(), 'middleware' => 'auth'], function () {
-        Route::group(['prefix' => 'settings/api'], function () {
-            Route::get('', [
-                'as' => 'api.settings',
-                'uses' => 'ApiController@settings',
-            ]);
+AdminHelper::registerRoutes(function () {
+    Route::name('api.')->group(function () {
+        Route::prefix('sanctum-token')->name('sanctum-token.')->group(function () {
+            Route::resource('/', SanctumTokenController::class)
+                ->parameters(['' => 'sanctum-token'])
+                ->except('edit', 'update', 'show');
+        });
 
-            Route::post('', [
-                'as' => 'api.settings.update',
-                'uses' => 'ApiController@storeSettings',
-                'permission' => 'api.settings',
-            ]);
+        Route::group(['prefix' => 'settings/api', 'permission' => 'api.settings'], function () {
+            Route::get('/', [ApiController::class, 'edit'])->name('settings');
+            Route::post('/', [ApiController::class, 'update'])->name('settings.update');
         });
     });
 });

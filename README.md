@@ -1,12 +1,5 @@
 # API for Ducal CMS
 
-<p align="center">
-    <a href="https://packagist.org/packages/botbducalle/api"><img src="https://img.shields.io/packagist/v/ducal/api.svg?style=flat-square" alt="Latest Version"></a>
-    <a href="/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square" alt="Software License"></a>
-    <a href="https://packagist.org/packages/ducal/api"><img src="https://img.shields.io/packagist/dt/ducal/api.svg?style=flat-square" alt="Total Downloads"></a>
-    <a href="https://codeclimate.com/github/ducal/api/maintainability"><img src="https://api.codeclimate.com/v1/badges/a6e4612307e3b3bf8252/maintainability" alt="Maintainability"></a>
-</p>
-
 ## Installation
 
 You can install the package via composer:
@@ -14,6 +7,10 @@ You can install the package via composer:
 ```shell
 composer require ducal/api
 ```
+
+## Documentation
+
+Laravel Sanctum official docs: https://laravel.com/docs/sanctum
 
 # Available API
 
@@ -24,17 +21,13 @@ composer require ducal/api
 php artisan scribe:generate
 ```
 
-### Changelog
-
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
-
-
-
 ### Security
 
 If you discover any security related issues, please email contact@ducalstudio.com instead of using the issue tracker.
 
+## Credits
 
+- [Ducal Studio](https://github.com/ducalstudio)
 
 ## License
 

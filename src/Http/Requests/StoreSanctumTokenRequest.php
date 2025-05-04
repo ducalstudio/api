@@ -2,15 +2,15 @@
 
 namespace Ducal\Api\Http\Requests;
 
-use Ducal\Base\Rules\OnOffRule;
 use Ducal\Support\Http\Requests\Request;
 
-class ApiSettingRequest extends Request
+class StoreSanctumTokenRequest extends Request
 {
     public function rules(): array
     {
         return [
-            'api_enabled' => [new OnOffRule()],
+            'name' => ['required', 'string', 'max:255'],
+            'abilities' => ['nullable', 'array'],
         ];
     }
 }
