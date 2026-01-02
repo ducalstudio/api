@@ -2,8 +2,9 @@
 
 namespace Ducal\Api\Providers;
 
-use Ducal\Api\Facades\ApiHelper;
 use Ducal\Api\Commands\GenerateDocumentationCommand;
+use Ducal\Api\Facades\ApiHelper;
+use Ducal\Api\Http\Middleware\ApiKeyMiddleware;
 use Ducal\Api\Http\Middleware\ForceJsonResponseMiddleware;
 use Ducal\Api\Models\PersonalAccessToken;
 use Ducal\Base\Facades\PanelSectionManager;
@@ -46,7 +47,8 @@ class ApiServiceProvider extends ServiceProvider
             ->loadAndPublishConfigurations(['api', 'permissions'])
             ->loadAndPublishTranslations()
             ->loadMigrations()
-            ->loadAndPublishViews();
+            ->loadAndPublishViews()
+            ->publishAssets();
 
         if (ApiHelper::enabled()) {
             $this->loadRoutes(['api']);
@@ -57,6 +59,11 @@ class ApiServiceProvider extends ServiceProvider
         $this->app['events']->listen(RouteMatched::class, function () {
             if (ApiHelper::enabled()) {
                 $this->app['router']->pushMiddlewareToGroup('api', ForceJsonResponseMiddleware::class);
+
+                // Add API key middleware if API key is configured
+                if (ApiHelper::hasApiKey()) {
+                    $this->app['router']->pushMiddlewareToGroup('api', ApiKeyMiddleware::class);
+                }
             }
         });
 
@@ -96,7 +103,7 @@ class ApiServiceProvider extends ServiceProvider
         });
     }
 
-    protected function getPath(string|null $path = null): string
+    protected function getPath(?string $path = null): string
     {
         return __DIR__ . '/../..' . ($path ? '/' . ltrim($path, '/') : '');
     }
