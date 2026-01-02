@@ -3,10 +3,14 @@
 namespace Ducal\Api\Providers;
 
 use Ducal\Api\Commands\GenerateDocumentationCommand;
+use Ducal\Api\Commands\ProcessScheduledNotificationsCommand;
+use Ducal\Api\Commands\SendPushNotificationCommand;
 use Ducal\Api\Facades\ApiHelper;
+use Ducal\Api\Http\Middleware\ApiEnabledMiddleware;
 use Ducal\Api\Http\Middleware\ApiKeyMiddleware;
 use Ducal\Api\Http\Middleware\ForceJsonResponseMiddleware;
 use Ducal\Api\Models\PersonalAccessToken;
+use Ducal\Base\Events\SystemUpdateDBMigrated;
 use Ducal\Base\Facades\PanelSectionManager;
 use Ducal\Base\PanelSections\PanelSectionItem;
 use Ducal\Base\Supports\ServiceProvider;
@@ -48,22 +52,21 @@ class ApiServiceProvider extends ServiceProvider
             ->loadAndPublishTranslations()
             ->loadMigrations()
             ->loadAndPublishViews()
-            ->publishAssets();
-
-        if (ApiHelper::enabled()) {
-            $this->loadRoutes(['api']);
-        }
+            ->publishAssets()
+            ->loadRoutes(['api']);
 
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
         $this->app['events']->listen(RouteMatched::class, function () {
-            if (ApiHelper::enabled()) {
-                $this->app['router']->pushMiddlewareToGroup('api', ForceJsonResponseMiddleware::class);
+            // Always add the API enabled middleware first
+            $this->app['router']->pushMiddlewareToGroup('api', ApiEnabledMiddleware::class);
 
-                // Add API key middleware if API key is configured
-                if (ApiHelper::hasApiKey()) {
-                    $this->app['router']->pushMiddlewareToGroup('api', ApiKeyMiddleware::class);
-                }
+            // Add force JSON response middleware
+            $this->app['router']->pushMiddlewareToGroup('api', ForceJsonResponseMiddleware::class);
+
+            // Add API key middleware if API key is configured
+            if (ApiHelper::hasApiKey()) {
+                $this->app['router']->pushMiddlewareToGroup('api', ApiKeyMiddleware::class);
             }
         });
 
@@ -83,6 +86,8 @@ class ApiServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 GenerateDocumentationCommand::class,
+                ProcessScheduledNotificationsCommand::class,
+                SendPushNotificationCommand::class,
             ]);
         }
 
@@ -100,6 +105,10 @@ class ApiServiceProvider extends ServiceProvider
 
                 return $permissions;
             }, 120);
+        });
+
+        $this->app['events']->listen(SystemUpdateDBMigrated::class, function () {
+            $this->app['migrator']->run($this->getPath('database/migrations'));
         });
     }
 

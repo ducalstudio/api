@@ -2,13 +2,12 @@
 
 namespace Ducal\Api\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Ducal\ACL\Traits\SendsPasswordResetEmails;
 use Ducal\Api\Facades\ApiHelper;
 use Ducal\Api\Http\Requests\ForgotPasswordRequest;
 use Illuminate\Support\Facades\Password;
 
-class ForgotPasswordController extends Controller
+class ForgotPasswordController extends BaseApiController
 {
     use SendsPasswordResetEmails;
 

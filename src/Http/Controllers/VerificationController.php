@@ -2,7 +2,6 @@
 
 namespace Ducal\Api\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
 use Ducal\Api\Facades\ApiHelper;
 use Ducal\Api\Http\Requests\ResendEmailVerificationRequest;
@@ -10,7 +9,7 @@ use Ducal\Base\Http\Responses\BaseHttpResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-class VerificationController extends Controller
+class VerificationController extends BaseApiController
 {
     /**
      * Resend email verification

@@ -27,43 +27,32 @@ class ApiSettingForm extends SettingForm
             ->contentOnly()
             ->addGeneralSettings()
             ->addSecuritySettings()
+            ->addPushNotificationSettings()
             ->addHelpSection();
     }
 
     protected function addGeneralSettings(): static
     {
+        $apiEnabled = old('api_enabled', ApiHelper::enabled());
+        $apiKey = ApiHelper::getApiKey();
+        $hasApiKey = ! empty($apiKey);
+
         return $this
-            ->addOpenFieldset('general', ['class' => 'form-fieldset'])
-            ->add(
-                'general_section_title',
-                HtmlField::class,
-                HtmlFieldOption::make()
-                    ->content('<h5 class="mb-3">' . trans('packages/api::api.api_general_section') . '</h5>')
-            )
             ->add(
                 'api_enabled',
                 OnOffCheckboxField::class,
                 OnOffFieldOption::make()
                     ->label(trans('packages/api::api.api_enabled'))
                     ->helperText(trans('packages/api::api.api_enabled_description'))
-                    ->value(ApiHelper::enabled())
+                    ->value($apiEnabled)
                     ->toArray()
             )
-            ->addCloseFieldset('general');
-    }
-
-    protected function addSecuritySettings(): static
-    {
-        $apiKey = ApiHelper::getApiKey();
-        $hasApiKey = !empty($apiKey);
-
-        return $this
-            ->addOpenFieldset('security', ['class' => 'form-fieldset mt-4'])
+            ->addOpenCollapsible('api_enabled', '1', $apiEnabled)
             ->add(
                 'security_section_title',
                 HtmlField::class,
                 HtmlFieldOption::make()
-                    ->content('<h5 class="mb-3">' . trans('packages/api::api.api_security_section') . '</h5>')
+                    ->content('<h5 class="mb-3 mt-4">' . trans('packages/api::api.api_security_section') . '</h5>')
             )
             ->when($hasApiKey, function ($form) {
                 return $form->add(
@@ -74,7 +63,7 @@ class ApiSettingForm extends SettingForm
                         ->content('<strong>API Key Protection:</strong> Enabled. All API requests require the X-API-KEY header.')
                 );
             })
-            ->when(!$hasApiKey, function ($form) {
+            ->when(! $hasApiKey, function ($form) {
                 return $form->add(
                     'api_key_status',
                     AlertField::class,
@@ -88,19 +77,95 @@ class ApiSettingForm extends SettingForm
                 HtmlField::class,
                 HtmlFieldOption::make()
                     ->content($this->getApiKeyFieldWithActions($apiKey))
+            );
+    }
+
+    protected function addSecuritySettings(): static
+    {
+        return $this;
+    }
+
+    protected function addPushNotificationSettings(): static
+    {
+        $fcmProjectId = setting('fcm_project_id');
+        $fcmServiceAccountPath = setting('fcm_service_account_path');
+        $hasFcmConfig = ! empty($fcmProjectId) && ! empty($fcmServiceAccountPath);
+        $pushNotificationsEnabled = old('push_notifications_enabled', setting('push_notifications_enabled', false));
+
+        return $this
+            ->add(
+                'push_notifications_section_title',
+                HtmlField::class,
+                HtmlFieldOption::make()
+                    ->content('<h5 class="mb-3 mt-4">' . trans('packages/api::api.push_notifications_section') . '</h5>')
             )
-            ->addCloseFieldset('security');
+            ->add(
+                'push_notifications_enabled',
+                OnOffCheckboxField::class,
+                OnOffFieldOption::make()
+                    ->label(trans('packages/api::api.push_notifications_enabled'))
+                    ->helperText(trans('packages/api::api.push_notifications_enabled_description'))
+                    ->value($pushNotificationsEnabled)
+                    ->toArray()
+            )
+            ->addOpenCollapsible('push_notifications_enabled', '1', $pushNotificationsEnabled)
+            ->add(
+                'fcm_project_id',
+                TextField::class,
+                TextFieldOption::make()
+                    ->label(trans('packages/api::api.fcm_project_id'))
+                    ->helperText(trans('packages/api::api.fcm_project_id_description'))
+                    ->placeholder(trans('packages/api::api.fcm_project_id_placeholder'))
+                    ->value(setting('fcm_project_id'))
+                    ->toArray()
+            )
+            ->add(
+                'fcm_service_account_wrapper',
+                HtmlField::class,
+                HtmlFieldOption::make()
+                    ->content($this->getFcmServiceAccountField($fcmServiceAccountPath))
+            )
+            ->when($hasFcmConfig, function ($form) {
+                return $form->add(
+                    'fcm_config_status',
+                    AlertField::class,
+                    AlertFieldOption::make()
+                        ->type('success')
+                        ->content('<strong>FCM Configuration:</strong> Project ID and service account are configured. Push notifications are ready to use.')
+                );
+            })
+            ->when(! $hasFcmConfig, function ($form) {
+                return $form->add(
+                    'fcm_config_status',
+                    AlertField::class,
+                    AlertFieldOption::make()
+                        ->type('warning')
+                        ->content('<strong>FCM Configuration:</strong> Project ID or service account is not configured. Push notifications will not work.')
+                );
+            })
+            ->add(
+                'fcm_setup_instructions',
+                HtmlField::class,
+                HtmlFieldOption::make()
+                    ->content($this->getFcmSetupInstructions())
+            )
+            ->add(
+                'send_test_notification_wrapper',
+                HtmlField::class,
+                HtmlFieldOption::make()
+                    ->content($this->getSendNotificationForm())
+            )
+            ->addCloseCollapsible('push_notifications_enabled', '1');
     }
 
     protected function addHelpSection(): static
     {
         return $this
-            ->addOpenFieldset('help', ['class' => 'form-fieldset mt-4'])
             ->add(
                 'help_section_title',
                 HtmlField::class,
                 HtmlFieldOption::make()
-                    ->content('<h5 class="mb-3">' . trans('packages/api::api.api_help_section') . '</h5>')
+                    ->content('<h5 class="mb-3 mt-4">' . trans('packages/api::api.api_help_section') . '</h5>')
             )
             ->add(
                 'api_documentation_info',
@@ -114,7 +179,7 @@ class ApiSettingForm extends SettingForm
                 HtmlFieldOption::make()
                     ->content($this->getUsageExamples())
             )
-            ->addCloseFieldset('help');
+            ->addCloseCollapsible('api_enabled', '1');
     }
 
     protected function getApiKeyActions(): string
@@ -122,7 +187,7 @@ class ApiSettingForm extends SettingForm
         return view('packages/api::settings.partials.api-key-actions')->render();
     }
 
-    protected function getApiKeyFieldWithActions(string $apiKey): string
+    protected function getApiKeyFieldWithActions(?string $apiKey): string
     {
         return view('packages/api::settings.partials.api-key-field', compact('apiKey'))->render();
     }
@@ -135,5 +200,20 @@ class ApiSettingForm extends SettingForm
     protected function getUsageExamples(): string
     {
         return view('packages/api::settings.partials.usage-examples')->render();
+    }
+
+    protected function getFcmServiceAccountField(?string $fcmServiceAccountPath): string
+    {
+        return view('packages/api::settings.partials.fcm-service-account-field', compact('fcmServiceAccountPath'))->render();
+    }
+
+    protected function getFcmSetupInstructions(): string
+    {
+        return view('packages/api::settings.partials.fcm-setup-instructions')->render();
+    }
+
+    protected function getSendNotificationForm(): string
+    {
+        return view('packages/api::settings.partials.send-notification-form')->render();
     }
 }
